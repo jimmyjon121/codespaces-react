@@ -41,6 +41,10 @@ import {
 	BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
 	PieChart, Pie, Cell, LineChart, Line 
 } from 'recharts';
+import AdminSettings from './modules/admin/components/AdminSettings';
+import { platformOwnerUser } from './modules/auth/config/roles';
+import { demoUsers, demoOrganizations } from './modules/auth/config/demoUsers';
+import RoleSwitcher from './components/ui/RoleSwitcher';
 
 // Fix Leaflet default icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -2213,7 +2217,7 @@ const MainApp = ({ user, userData }) => {
   const { notification, showNotification, dismissNotification } = useNotification();
 
   // Derived State
-  const isHighestAdmin = userData?.role === 'Admin 3';
+  const isHighestAdmin = userData?.role === 'Admin 3' || userData?.role === 'Platform Administrator' || userData?.role === 'Platform Owner';
 
   // Callbacks
   const handleViewChange = useCallback((view) => {
@@ -2987,6 +2991,14 @@ const ClientListView = ({ programName, clients, onBack, onClientSelect, setActiv
 			   programStaff.clinicalCoaches.find(c => c.name === therapistName);
 	};
 
+	// Get clinical coach for a client (round-robin assignment)
+	const getClinicalCoach = (clientId) => {
+		if (!programStaff?.clinicalCoaches?.length) return 'Unassigned';
+		const coaches = programStaff.clinicalCoaches;
+		const clientIndex = parseInt(clientId.replace(/\D/g, ''), 10) || 0;
+		return coaches[clientIndex % coaches.length].name;
+	};
+
 	return (
 		<div>
 			<button onClick={onBack} className="flex items-center mb-6 text-sm font-semibold text-blue-600 hover:text-blue-800">
@@ -3001,27 +3013,23 @@ const ClientListView = ({ programName, clients, onBack, onClientSelect, setActiv
 
 			{/* Program Leadership */}
 			{programStaff && (
-				<div className="mb-8 bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
-					<h2 className="text-xl font-semibold mb-4 flex items-center">
-						<Users className="w-5 h-5 mr-2 text-blue-600" />
-						Program Leadership
+				<div className="mb-6 bg-white dark:bg-slate-800 rounded-lg shadow-md p-4">
+					<h2 className="text-lg font-semibold mb-3 flex items-center">
+						<Users className="w-4 h-4 mr-2 text-blue-600" />
+						Program Coordinators
 					</h2>
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-							<h3 className="font-semibold text-blue-900 dark:text-blue-100">{programStaff.coordinators.programCoordinator.name}</h3>
-							<p className="text-blue-700 dark:text-blue-300 text-sm">{programStaff.coordinators.programCoordinator.title}</p>
-							<p className="text-blue-600 dark:text-blue-400 text-sm">{programStaff.coordinators.programCoordinator.email}</p>
-							{programStaff.coordinators.programCoordinator.yearsExperience && (
-								<p className="text-blue-600 dark:text-blue-400 text-sm">{programStaff.coordinators.programCoordinator.yearsExperience} years experience</p>
-							)}
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+						<div className="flex items-center space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+							<div>
+								<h3 className="font-medium text-blue-900 dark:text-blue-100">{programStaff.coordinators.programCoordinator.name}</h3>
+								<p className="text-blue-600 dark:text-blue-400 text-xs">{programStaff.coordinators.programCoordinator.email}</p>
+							</div>
 						</div>
-						<div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg">
-							<h3 className="font-semibold">{programStaff.coordinators.assistantCoordinator.name}</h3>
-							<p className="text-slate-600 dark:text-slate-400 text-sm">{programStaff.coordinators.assistantCoordinator.title}</p>
-							<p className="text-slate-500 dark:text-slate-500 text-sm">{programStaff.coordinators.assistantCoordinator.email}</p>
-							{programStaff.coordinators.assistantCoordinator.yearsExperience && (
-								<p className="text-slate-500 dark:text-slate-500 text-sm">{programStaff.coordinators.assistantCoordinator.yearsExperience} years experience</p>
-							)}
+						<div className="flex items-center space-x-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+							<div>
+								<h3 className="font-medium">{programStaff.coordinators.assistantCoordinator.name}</h3>
+								<p className="text-slate-500 dark:text-slate-400 text-xs">{programStaff.coordinators.assistantCoordinator.email}</p>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -3037,66 +3045,52 @@ const ClientListView = ({ programName, clients, onBack, onClientSelect, setActiv
 						<div key={therapistName} className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden">
 							{/* Therapist Header */}
 							<div 
-								className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 cursor-pointer hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 transition-colors"
+								className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 cursor-pointer hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 transition-colors"
 								onClick={() => setExpandedTherapist(isExpanded ? null : therapistName)}
 							>
 								<div className="flex justify-between items-center">
-									<div className="flex items-center space-x-4">
-										<div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
+									<div className="flex items-center space-x-3">
+										<div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
 											{therapistName.split(' ').map(n => n[0]).join('')}
 										</div>
 										<div>
 											<h3 className="text-lg font-semibold text-slate-900 dark:text-white">{therapistName}</h3>
 											{therapistDetails && (
-												<div className="flex flex-wrap gap-2 mt-1">
-													<span className="text-sm text-blue-600 dark:text-blue-400">{therapistDetails.license || therapistDetails.title}</span>
-													{therapistDetails.yearsExperience && (
-														<span className="text-sm text-slate-500 dark:text-slate-400">• {therapistDetails.yearsExperience} years exp</span>
-													)}
-													{therapistDetails.specialties && (
-														<span className="text-sm text-slate-500 dark:text-slate-400">• {therapistDetails.specialties.join(', ')}</span>
-													)}
+												<div className="flex items-center gap-3 mt-1 text-sm">
+													<span className="text-blue-600 dark:text-blue-400 font-medium">{therapistDetails.license || therapistDetails.title}</span>
+													<span className="text-slate-600 dark:text-slate-400">
+														<Phone className="w-3 h-3 inline mr-1" />
+														{therapistDetails.phone}
+													</span>
+													<span className="text-slate-600 dark:text-slate-400">
+														<Mail className="w-3 h-3 inline mr-1" />
+														{therapistDetails.email}
+													</span>
 												</div>
 											)}
 										</div>
 									</div>
-									<div className="flex items-center space-x-4">
+									<div className="flex items-center space-x-3">
 										<div className="text-right">
-											<div className="text-2xl font-bold text-blue-600">{therapistClients.length}</div>
-											<div className="text-sm text-slate-500 dark:text-slate-400">Cases</div>
+											<div className="text-xl font-bold text-blue-600">{therapistClients.length}</div>
+											<div className="text-xs text-slate-500 dark:text-slate-400">
+												{therapistDetails?.maxCaseload ? `of ${therapistDetails.maxCaseload}` : 'cases'}
+											</div>
 										</div>
-										<ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+										<ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
 									</div>
 								</div>
-								
-								{therapistDetails && (
-									<div className="mt-4 flex justify-between items-center text-sm">
-										<div className="flex items-center space-x-4">
-											<span className="text-slate-600 dark:text-slate-400">
-												<Phone className="w-4 h-4 inline mr-1" />
-												{therapistDetails.phone}
-											</span>
-											<span className="text-slate-600 dark:text-slate-400">
-												<Mail className="w-4 h-4 inline mr-1" />
-												{therapistDetails.email}
-											</span>
-										</div>
-										{therapistDetails.maxCaseload && (
-											<div className="text-slate-500 dark:text-slate-400">
-												Caseload: {therapistClients.length}/{therapistDetails.maxCaseload}
-											</div>
-										)}
-									</div>
-								)}
 							</div>
 
 							{/* Cases Table (Collapsible) */}
 							{isExpanded && (
-								<div className="overflow-x-auto">
+								<div>
+									<div className="overflow-x-auto">
 									<table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
 										<thead className="bg-slate-50 dark:bg-slate-700">
 											<tr>
 												<th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">Client ID</th>
+												<th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">Clinical Coach</th>
 												<th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">Admission Date</th>
 												<th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">Est. Discharge</th>
 												<th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider">Status</th>
@@ -3115,6 +3109,9 @@ const ClientListView = ({ programName, clients, onBack, onClientSelect, setActiv
 														<td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">
 															{plan.clientId}
 															{plan.atRisk && <AlertTriangle className="w-4 h-4 inline ml-2 text-red-500" />}
+														</td>
+														<td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
+															{getClinicalCoach(plan.clientId)}
 														</td>
 														<td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
 															{plan.admissionDate}
@@ -3155,6 +3152,7 @@ const ClientListView = ({ programName, clients, onBack, onClientSelect, setActiv
 											})}
 										</tbody>
 									</table>
+									</div>
 								</div>
 							)}
 						</div>
@@ -3163,7 +3161,7 @@ const ClientListView = ({ programName, clients, onBack, onClientSelect, setActiv
 			</div>
 		</div>
 	);
-}
+};
 
 const MyCasesView = ({ onBack, userData, isDemoMode, showNotification, isMeetingMode, setIsMeetingMode, onClientSelect }) => {
 	const [clientPlans, setClientPlans] = useState([]);
@@ -6204,6 +6202,19 @@ const ProgramEditor = ({ program, onUpdate, onCancel, showNotification }) => {
 // --- SettingsView Component (Original Definition) ---
 const SettingsView = ({userData, showNotification}) => {
 	const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+	const [activeTab, setActiveTab] = useState('general');
+	
+	// Demo user state for testing role-based access
+	const [currentDemoUser, setCurrentDemoUser] = useState(demoUsers.platformAdmin);
+	const [currentOrganization, setCurrentOrganization] = useState(demoOrganizations['clearhive-platform']);
+
+	// Handle demo user changes
+	const handleDemoUserChange = (newUser) => {
+		setCurrentDemoUser(newUser);
+		// Update organization based on user
+		const orgId = newUser.organizationId;
+		setCurrentOrganization(demoOrganizations[orgId] || demoOrganizations['customer-123']);
+	};
 
 	const handleSeedDatabase = async () => {
 		setIsConfirmModalOpen(false);
@@ -6229,22 +6240,71 @@ const SettingsView = ({userData, showNotification}) => {
 		}
 	};
 
+	const tabs = [
+		{ id: 'general', label: 'General', icon: Settings },
+		{ id: 'admin', label: 'Admin Features', icon: ShieldCheck }
+	];
+
 	return (
 		<div>
 			<h1 className="text-3xl font-bold">Settings</h1>
-			<p className="mt-2 text-slate-600 dark:text-slate-400">User and organization settings will be managed here.</p>
-			<div className="mt-8 p-6 bg-white dark:bg-slate-800 rounded-lg shadow-md">
-				<h2 className="text-xl font-semibold">Database Management</h2>
-				<p className="mt-2 text-slate-600 dark:text-slate-400">
-					Use this button to populate or update your program directory from the application's master list. This includes the necessary geolocation data for the map view.
-				</p>
-				<button
-					onClick={() => setIsConfirmModalOpen(true)}
-					className="mt-4 px-4 py-2 font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-				>
-					Force Re-Seed Program Database
-				</button>
+			<p className="mt-2 text-slate-600 dark:text-slate-400">Configure your organization and application settings.</p>
+			
+			{/* Tabs */}
+			<div className="flex border-b border-slate-200 dark:border-slate-700 mt-6 mb-6">
+				{tabs.map(tab => {
+					const Icon = tab.icon;
+					return (
+						<button
+							key={tab.id}
+							onClick={() => setActiveTab(tab.id)}
+							className={`flex items-center gap-2 px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+								activeTab === tab.id
+									? 'border-blue-600 text-blue-600'
+									: 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+							}`}
+						>
+							<Icon className="w-4 h-4" />
+							{tab.label}
+						</button>
+					);
+				})}
 			</div>
+
+			{/* Tab Content */}
+			{activeTab === 'general' && (
+				<div className="mt-8 p-6 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+					<h2 className="text-xl font-semibold">Database Management</h2>
+					<p className="mt-2 text-slate-600 dark:text-slate-400">
+						Use this button to populate or update your program directory from the application's master list. This includes the necessary geolocation data for the map view.
+					</p>
+					<button
+						onClick={() => setIsConfirmModalOpen(true)}
+						className="mt-4 px-4 py-2 font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+					>
+						Force Re-Seed Program Database
+					</button>
+				</div>
+			)}
+
+			{activeTab === 'admin' && (
+				<div>
+					<RoleSwitcher 
+						currentUser={currentDemoUser}
+						onUserChange={handleDemoUserChange}
+						availableUsers={demoUsers}
+					/>
+					<AdminSettings 
+						userData={currentDemoUser}
+						organization={currentOrganization}
+						onConfigChange={(config) => {
+							showNotification("Feature configuration updated!", "success");
+							console.log('New config:', config);
+						}} 
+					/>
+				</div>
+			)}
+
 			<ConfirmationModal
 				isOpen={isConfirmModalOpen}
 				onClose={() => setIsConfirmModalOpen(false)}
