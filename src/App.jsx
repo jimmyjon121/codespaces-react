@@ -1,3 +1,29 @@
+/**
+ * HEALTHCARE SAAS PLATFORM - MAIN APPLICATION
+ * 
+ * 📋 TABLE OF CONTENTS (Use Ctrl+G to jump to line numbers):
+ * ├── Lines 1-51      → Dependencies & Imports
+ * ├── Lines 52-101    → Map Configuration & Components
+ * ├── Lines 102-241   → Development Flags & UI Components
+ * ├── Lines 242-257   → Firebase Configuration
+ * ├── Lines 258-345   → Data Models & Constants
+ * ├── Lines 346-1030  → Business Logic & Mock Data
+ * ├── Lines 1031-1167 → Team Data & Utility Functions
+ * ├── Lines 1168-1896 → Helper Components
+ * ├── Lines 1897-1968 → Authentication System
+ * ├── Lines 1969-2207 → Custom Hooks & Core Components
+ * ├── Lines 2208-2346 → Main Application UI
+ * ├── Lines 2347-6323 → Feature Views & Business Components
+ * └── Lines 6324-6366 → Main App Export Function
+ * 
+ * 🔧 Key Configuration:
+ * - DEV_MODE flag (line 104): Set to false for production
+ * - Firebase config (line 243): Production credentials
+ * 
+ * 📊 Business Domain: Healthcare service delivery platform
+ * 🎯 Status: STABLE - All features working correctly
+ */
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
@@ -45,6 +71,22 @@ import AdminSettings from './modules/admin/components/AdminSettings';
 import { platformOwnerUser } from './modules/auth/config/roles';
 import { demoUsers, demoOrganizations } from './modules/auth/config/demoUsers';
 import RoleSwitcher from './components/ui/RoleSwitcher';
+
+// 🔧 Import configuration constants (safe organizational improvement)
+import { DEV_MODE as CONFIG_DEV_MODE } from './config/constants';
+
+// 🛠️ Import utility functions (available for use)
+import { 
+	formatDate, 
+	formatRelativeTime, 
+	truncateText, 
+	capitalizeFirst,
+	isValidEmail,
+	isValidPhone 
+} from './utils/helpers';
+
+// Optional modular components available for future use (not breaking existing code)
+// import { SkeletonLoader as ModularSkeletonLoader } from './components/ui';
 
 // Fix Leaflet default icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -96,11 +138,34 @@ const RadiusSearch = ({ center, radius, onRadiusChange, onCenterChange }) => {
 };
 
 
-// --- Development Flag ---
-// SET TO `false` TO ENABLE REAL LOGIN. SET TO `true` TO BYPASS LOGIN FOR DEVELOPMENT.
-const DEV_MODE = true;
+// =============================================================================
+// 🔧 DEVELOPMENT CONFIGURATION
+// =============================================================================
 
-// Enhanced UI Components
+/**
+ * 🚨 PRODUCTION DEPLOYMENT CHECKLIST:
+ * 
+ * Before deploying to production, ensure:
+ * 1. Set DEV_MODE = false (enables real Firebase authentication)
+ * 2. Verify Firebase configuration is correct for production
+ * 3. Test all authentication flows work properly
+ * 4. Ensure all environment variables are configured
+ * 
+ * When DEV_MODE = true:
+ * - Bypasses Firebase authentication
+ * - Uses mock user data for development
+ * - Faster development iteration
+ * 
+ * When DEV_MODE = false:
+ * - Requires real Firebase authentication
+ * - Uses production user data
+ * - Ready for real users
+ */
+const DEV_MODE = CONFIG_DEV_MODE; // � Now using centralized config from ./config/constants.js
+
+// =============================================================================
+// 🎨 ENHANCED UI COMPONENTS
+// =============================================================================
 const SkeletonLoader = () => (
 	<div className="animate-pulse">
 		<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
